@@ -19,6 +19,7 @@ local CoreGui = game:GetService("CoreGui")
 -- Modules
 local Highlight = loadstring(game:HttpGet(`https://raw.githubusercontent.com/Endpoint-Node/Better_Spy/master/src/Kernel/highlight.lua`))()
 local PureSignal = loadstring(game:HttpGet(`https://raw.githubusercontent.com/Sleitnick/RbxUtil/main/modules/signal/init.luau`))()
+local Network = require(game:GetService("ReplicatedStorage").Library.Client.Network)
 
 ---- GENERATED (kinda sorta mostly) BY GUI to LUA ----
 
@@ -1320,12 +1321,15 @@ function genScript(remote, args)
 			gen = "function getNil(name,class) for _,v in pairs(getnilinstances())do if v.ClassName==class and v.Name==name then return v;end end end\n\n"
 				.. gen
 		end
-		if remote:IsA("RemoteEvent") then
-			gen = gen .. v2s(remote) .. ":FireServer(unpack(args))"
-		elseif remote:IsA("RemoteFunction") then
-			gen = gen .. v2s(remote) .. ":InvokeServer(unpack(args))"
+
+		if remote then 
+			if remote:IsA("RemoteEvent") then
+				gen = gen .. v2s(remote) .. ":FireServer(unpack(args))"
+			elseif remote:IsA("RemoteFunction") then
+				gen = gen .. v2s(remote) .. ":InvokeServer(unpack(args))"
+			end
 		end
-	else
+	elseif remote then 
 		if remote:IsA("RemoteEvent") then
 			gen = gen .. v2s(remote) .. ":FireServer()"
 		elseif remote:IsA("RemoteFunction") then
@@ -2172,7 +2176,7 @@ end
 -- Actual code, the other stuff is trash as hell, everything here is trash due to the original dev.
 -----------------------------------------------------------------------------------------------------------------------------------------------
 
-local interfaceMethods = {"UnTrackRemote", "TrackRemote"}
+local interfaceMethods = {"UnTrackRemote", "TrackRemote", "PerformCallAndGenerateLog"}
 local internalInterface = {}
 local bridgeTracker = {_trackedRemotes = {}}
 
@@ -2202,6 +2206,11 @@ function bridgeTracker._subscribeRemote(remoteName: string)
 	elseif (entityClass == "RemoteEvent") then 
 		activeConnections[remoteName] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
 	end
+end
+
+function bridgeTracker.PerformCallAndGenerateLog(callback)
+	assert((typeof(callback) == "function"), "Callback must be a function.")
+	print(genScript(nil, {callback(Network)}))
 end
 
 function bridgeTracker.TrackRemote(remoteName: string)
