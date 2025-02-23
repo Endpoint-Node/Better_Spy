@@ -2243,7 +2243,7 @@ local function CleanUp()
 		for name: string, signal in internalInterface do 
 			if (typeof(signal) ~= "table") then continue end 
 
-			print("was signal import successful?:", signal.Disconnect, signal.Connect, "methodes:", pcall(signal.Disconnect, signal))
+			print("was signal import successful?: methodes:", pcall(function() signal:Disconnect() end))
 			logBuffer = logBuffer.."\nKilled deprecated connection"..name
 		end
 	end
