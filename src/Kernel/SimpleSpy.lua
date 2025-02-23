@@ -2241,11 +2241,14 @@ local function CleanUp()
 
 	if (typeof(internalInterface) == "table") then 
 		for name: string, signal in internalInterface do 
-			print("was signal import successful?:", signal.Disconnect, signal.Connect)
-			signal:Disconnect()
+			if (typeof(signal) ~= "table") then continue end 
+
+			print("was signal import successful?:", signal.Disconnect, signal.Connect, "methodes:", pcall(signal.Disconnect, signal))
 			logBuffer = logBuffer.."\nKilled deprecated connection"..name
 		end
 	end
+
+	table.clear(internalInterface)
 
 	if (typeof(deprecatedThread) == "thread") then 
 		coroutine.close(deprecatedThread)
@@ -2261,7 +2264,7 @@ function toggleSpy()
 	if not toggle then
 		CleanUp()
 
-		for _, method in ipairs(interfaceMethods) do 
+		for _, method: string in ipairs(interfaceMethods) do 
 			local newGloablBridge = PureSignal.new()
 			
 			internalInterface[method] = newGloablBridge
