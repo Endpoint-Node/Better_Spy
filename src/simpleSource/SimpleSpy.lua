@@ -307,6 +307,8 @@ local function CleanUp()
 	local deprecatedConnections = _G._ACTIVE_REMOTE_CONNECTIONS	
 	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
 
+	print("About to itterate over:", deprecatedConnections, deprecatedThread)
+
 	if (typeof(deprecatedConnections) == "table") then 
 		for name: string, connection in deprecatedConnections do 
 			logBuffer = logBuffer.."\nKilled deprecated connection:"..name
