@@ -2206,6 +2206,7 @@ end
 
 function bridgeTracker.TrackRemote(remoteName: string)
 	bridgeTracker._subscribeRemote(remoteName)
+	print("Successfuly tracked remote "..remoteName)
 end
 
 function bridgeTracker.UnTrackRemote(remoteName: string)
@@ -2220,10 +2221,11 @@ function bridgeTracker.UnTrackRemote(remoteName: string)
 	elseif entity:IsA("RemoteFunciton") then
 		(entity::RemoteFunction).OnClientInvoke = nil
 	end
+
+	print("Successfuly Untracked remote "..remoteName)
 end
 
 local function CleanUp()
-	local depractedInterface = _G.INTERNAL_HOOK_INTERFACE
 	local deprecatedConnections = _G._ACTIVE_REMOTE_CONNECTIONS	
 	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
 	local logBuffer = _G.REMOTE_LOG_BUFFER or ""
@@ -2237,8 +2239,8 @@ local function CleanUp()
 		end
 	end
 
-	if (typeof(depractedInterface) == "table") then 
-		for name: string, signal in depractedInterface do 
+	if (typeof(internalInterface) == "table") then 
+		for name: string, signal in internalInterface do 
 			print("was signal import successful?:", signal.Disconnect, signal.Connect)
 			signal:Disconnect()
 			logBuffer = logBuffer.."\nKilled deprecated connection"..name
