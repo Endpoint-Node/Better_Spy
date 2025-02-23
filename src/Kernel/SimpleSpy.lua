@@ -301,15 +301,11 @@ local hookedRemotes = {
 }
 
 local generationUUID = game:GetService("HttpService"):GenerateGUID(false)
-local logBuffer = ""
 
 local function CleanUp()
-	print("Starting cleanup operation.")
-
 	local deprecatedConnections = _G._ACTIVE_REMOTE_CONNECTIONS	
 	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
-
-	print("About to itterate over:", deprecatedConnections, deprecatedThread)
+	local logBuffer = _G.REMOTE_LOG_BUFFER or ""
 
 	if (typeof(deprecatedConnections) == "table") then 
 		for name: string, connection in deprecatedConnections do 
@@ -322,6 +318,7 @@ local function CleanUp()
 		coroutine.close(deprecatedThread)
 	end
 
+	_G.REMOTE_LOG_BUFFER = logBuffer
 	print("Cleanup operation succeeded.")
 end
 
