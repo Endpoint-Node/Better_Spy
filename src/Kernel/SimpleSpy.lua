@@ -15,10 +15,10 @@ end
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local Highlight =
-	loadstring(
-		game:HttpGet("https://github.com/exxtremestuffs/SimpleSpySource/raw/master/highlight.lua")
-	)()
+
+-- Modules
+local Highlight = loadstring(game:HttpGet(`https://raw.githubusercontent.com/Endpoint-Node/Better_Spy/master/src/Kernel/highlight.lua`))()
+local PureSignal = loadstring(game:HttpGet(`https://raw.githubusercontent.com/Sleitnick/RbxUtil/main/modules/signal/init.luau`))()
 
 ---- GENERATED (kinda sorta mostly) BY GUI to LUA ----
 
@@ -296,31 +296,10 @@ TextLabel.TextYAlignment = Enum.TextYAlignment.Top
 
 local networkContainer = game:GetService("ReplicatedStorage").Network::Folder
 local activeConnections = {}
+local generationUUID = game:GetService("HttpService"):GenerateGUID(false)
 local hookedRemotes = {
     "Pets_LocalPetsUpdated"
 }
-
-local generationUUID = game:GetService("HttpService"):GenerateGUID(false)
-
-local function CleanUp()
-	local deprecatedConnections = _G._ACTIVE_REMOTE_CONNECTIONS	
-	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
-	local logBuffer = _G.REMOTE_LOG_BUFFER or ""
-
-	if (typeof(deprecatedConnections) == "table") then 
-		for name: string, connection in deprecatedConnections do 
-			logBuffer = logBuffer.."\nKilled deprecated connection:"..name
-			connection:Disconnect()
-		end
-	end
-
-	if (typeof(deprecatedThread) == "thread") then 
-		coroutine.close(deprecatedThread)
-	end
-
-	_G.REMOTE_LOG_BUFFER = logBuffer
-	print("Cleanup operation succeeded.")
-end
 
 -------------------------------------------------------------------------------
 -- init
@@ -2189,31 +2168,105 @@ end
 -- 	return hookRemote("RemoteFunction", ...)
 -- end, originalFunction)
 
+-----------------------------------------------------------------------------------------------------------------------------------------------
+-- Actual code, the other stuff is trash as hell, everything here is trash due to the original dev.
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+local interfaceMethods = {"UnTrackRemote", "TrackRemote"}
+local internalInterface = {}
+local bridgeTracker = {_trackedRemotes = {}}
+
+_G.INTERNAL_HOOK_INTERFACE = internalInterface
+
+function bridgeTracker._ensureAndGetRemoteFromName(remoteName: string)
+	assert((typeof(remoteName) == "string"), "Invalid remote name, string expected.")
+	return assert(networkContainer:FindFirstChild(remoteName))
+end
+
+function bridgeTracker._subscribeRemote(remoteName: string)
+	local entity: Instance = bridgeTracker._ensureAndGetRemoteFromName(remoteName)
+
+	entity:SetAttribute("_generationUUID", generationUUID)
+	table.insert(bridgeTracker._trackedRemotes, remoteName)
+
+	local entityClass = (entity:IsA("RemoteFunction") and "RemoteFunction") or "RemoteEvent"
+	local function generateLog(...)
+		if (entity:GetAttribute("_generationUUID") ~= generationUUID) then return end
+		print(genScript(entity, {...}))
+		hookRemote(entityClass, entity, ...)
+	end
+
+	if (entityClass == "RemoteFunction") then
+		(entity::RemoteFunction).OnClientInvoke = generateLog
+	elseif (entityClass == "RemoteEvent") then 
+		activeConnections[remoteName] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
+	end
+end
+
+function bridgeTracker.TrackRemote(remoteName: string)
+	bridgeTracker._subscribeRemote(remoteName)
+end
+
+function bridgeTracker.UnTrackRemote(remoteName: string)
+	local entity = bridgeTracker._ensureAndGetRemoteFromName(remoteName)
+	local trackTrace = activeConnections[remoteName]
+
+	entity:SetAttribute("_generationUUID", nil)
+	table.remove(bridgeTracker._trackedRemotes, table.find(bridgeTracker, remoteName))
+
+	if (typeof(trackTrace) == "RBXScriptConnection") then 
+		trackTrace:Disconnect()
+	elseif entity:IsA("RemoteFunciton") then
+		(entity::RemoteFunction).OnClientInvoke = nil
+	end
+end
+
+local function CleanUp()
+	local depractedInterface = _G.INTERNAL_HOOK_INTERFACE
+	local deprecatedConnections = _G._ACTIVE_REMOTE_CONNECTIONS	
+	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
+	local logBuffer = _G.REMOTE_LOG_BUFFER or ""
+
+	table.clear(bridgeTracker._trackedRemotes)
+
+	if (typeof(deprecatedConnections) == "table") then 
+		for name: string, connection in deprecatedConnections do 
+			logBuffer = logBuffer.."\nKilled deprecated connection:"..name
+			connection:Disconnect()
+		end
+	end
+
+	if (typeof(depractedInterface) == "table") then 
+		for _, signal in depractedInterface do 
+			signal:Disconnect()
+		end
+	end
+
+	if (typeof(deprecatedThread) == "thread") then 
+		coroutine.close(deprecatedThread)
+	end
+
+	_G.REMOTE_LOG_BUFFER = logBuffer
+	print("Cleanup operation succeeded.")
+end
+
+
 --- Toggles on and off the remote spy
 function toggleSpy()
 	if not toggle then
 		CleanUp()
 
+		for _, method in ipairs(interfaceMethods) do 
+			local newGloablBridge = PureSignal.new()
+			
+			internalInterface[method] = newGloablBridge
+			newGloablBridge:Connect(bridgeTracker[method])
+		end
+
 		_G._ACTIVE_REMOTE_CONNECTIONS = activeConnections
 		_G._ACTIVE_REMOTE_THREAD = coroutine.create(function()
 			for _, remoteName: string in hookedRemotes do 
-				local entity: Instance? = networkContainer:FindFirstChild(remoteName)
-				if not entity then print(string.format("missing entity: %s from the network container", remoteName)) continue end 
-
-				entity:SetAttribute("_generationUUID", generationUUID)
-				
-				local entityClass = (entity:IsA("RemoteFunction") and "RemoteFunction") or "RemoteEvent"
-				local function generateLog(...)
-					if (entity:GetAttribute("_generationUUID") ~= generationUUID) then return end
-					print(genScript(entity, {...}))
-					hookRemote(entityClass, entity, ...)
-				end
-
-				if (entityClass == "RemoteFunction") then
-					(entity::RemoteFunction).OnClientInvoke = generateLog
-				elseif (entityClass == "RemoteEvent") then 
-					activeConnections[remoteName] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
-				end
+				bridgeTracker._subscribeRemote(remoteName)
 			end
 		end)
 
