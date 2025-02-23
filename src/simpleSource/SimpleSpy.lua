@@ -293,6 +293,32 @@ TextLabel.TextWrapped = true
 TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 TextLabel.TextYAlignment = Enum.TextYAlignment.Top
 
+
+local networkContainer = game:GetService("ReplicatedStorage").Network::Folder
+local activeConnections = {}
+local hookedRemotes = {
+    "Pets_LocalPetsUpdated"
+}
+
+local generationUUID = game:GetService("HttpService"):GenerateGUID(false)
+local logBuffer = ""
+
+local function CleanUp()
+	local deprecatedConnections = _G._ACTIVE_REMOTE_CONNECTIONS	
+	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
+
+	if (typeof(deprecatedConnections) == "table") then 
+		for name: string, connection in _G.deprecatedConnections do 
+			logBuffer = logBuffer.."\nKilled depracated connection:"..name
+			connection:Disconnect()
+		end
+	end
+
+	if (typeof(deprecatedThread) == "thread") then 
+		coroutine.close(deprecatedThread)
+	end
+end
+
 -------------------------------------------------------------------------------
 -- init
 local RunService = game:GetService("RunService")
@@ -2160,43 +2186,68 @@ end, originalFunction)
 
 --- Toggles on and off the remote spy
 function toggleSpy()
-	if true then return end 
 	if not toggle then
-		if hookmetamethod then
-			local oldNamecall = hookmetamethod(game, "__namecall", newnamecall)
-			original = original or function(...)
-				return oldNamecall(...)
+		CleanUp()
+		print("Hook operation starting: LogBuffer:", logBuffer)
+
+		_G._ACTIVE_REMOTE_CONNECTIONS = activeConnections
+		_G._ACTIVE_REMOTE_THREAD = coroutine.create(function()
+			for _, remoteName: string in hookedRemotes do 
+				local entity: Instance? = networkContainer:FindFirstChild(remoteName)
+				if not entity then print(string.format("missing entity: %s from the network container", remoteName)) continue end 
+
+				entity:SetAttribute("_generationUUID", generationUUID)
+
+				local function generateLog(...)
+					if (entity:GetAttribute("_generationUUID") ~= generationUUID) then return end
+					print(genScript(entity, {...}))
+				end
+
+				if entity:IsA("RemoteFunction") then
+					(entity::RemoteFunction).OnClientInvoke = generateLog
+				elseif entity:IsA("RemoteEvent") then 
+					activeConnections[remoteName] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
+				end
 			end
-			_G.OriginalNamecall = original
-		else
-			gm = gm or getrawmetatable(game)
-			original = original or function(...)
-				return gm.__namecall(...)
-			end
-			setreadonly(gm, false)
-			if not original then
-				warn("SimpleSpy: namecall method not found!")
-				onToggleButtonClick()
-				return
-			end
-			gm.__namecall = newnamecall
-			setreadonly(gm, true)
-		end
-		originalEvent = hookfunction(remoteEvent.FireServer, newFireServer)
-		originalFunction = hookfunction(remoteFunction.InvokeServer, newInvokeServer)
+		end)
+
+		coroutine.resume(_G._ACTIVE_REMOTE_THREAD)
+		-- 	if hookmetamethod then
+	-- 		local oldNamecall = hookmetamethod(game, "__namecall", newnamecall)
+	-- 		original = original or function(...)
+	-- 			return oldNamecall(...)
+	-- 		end
+	-- 		_G.OriginalNamecall = original
+	-- 	else
+	-- 		gm = gm or getrawmetatable(game)
+	-- 		original = original or function(...)
+	-- 			return gm.__namecall(...)
+	-- 		end
+	-- 		setreadonly(gm, false)
+	-- 		if not original then
+	-- 			warn("SimpleSpy: namecall method not found!")
+	-- 			onToggleButtonClick()
+	-- 			return
+	-- 		end
+	-- 		gm.__namecall = newnamecall
+	-- 		setreadonly(gm, true)
+	-- 	end
+	-- 	originalEvent = hookfunction(remoteEvent.FireServer, newFireServer)
+	-- 	originalFunction = hookfunction(remoteFunction.InvokeServer, newInvokeServer)
 	else
-		if hookmetamethod then
-			if original then
-				hookmetamethod(game, "__namecall", original)
-			end
-		else
-			gm = gm or getrawmetatable(game)
-			setreadonly(gm, false)
-			gm.__namecall = original
-			setreadonly(gm, true)
-		end
-		hookfunction(remoteEvent.FireServer, originalEvent)
-		hookfunction(remoteFunction.InvokeServer, originalFunction)
+		CleanUp()
+		-- if hookmetamethod then
+		-- 	if original then
+		-- 		hookmetamethod(game, "__namecall", original)
+		-- 	end
+		-- else
+		-- 	gm = gm or getrawmetatable(game)
+		-- 	setreadonly(gm, false)
+		-- 	gm.__namecall = original
+		-- 	setreadonly(gm, true)
+		-- end
+		-- hookfunction(remoteEvent.FireServer, originalEvent)
+		-- hookfunction(remoteFunction.InvokeServer, originalFunction)
 	end
 end
 
@@ -2208,6 +2259,7 @@ end
 
 --- Shuts down the remote spy
 function shutdown()
+	CleanUp()
 	if schedulerconnect then
 		schedulerconnect:Disconnect()
 	end
