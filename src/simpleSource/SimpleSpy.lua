@@ -308,8 +308,8 @@ local function CleanUp()
 	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
 
 	if (typeof(deprecatedConnections) == "table") then 
-		for name: string, connection in _G.deprecatedConnections do 
-			logBuffer = logBuffer.."\nKilled depracated connection:"..name
+		for name: string, connection in deprecatedConnections do 
+			logBuffer = logBuffer.."\nKilled deprecated connection:"..name
 			connection:Disconnect()
 		end
 	end
@@ -2113,76 +2113,76 @@ function hookRemote(remoteType, remote, ...)
 	end
 end
 
-local newnamecall = newcclosure(function(remote, ...)
-	if typeof(remote) == "Instance" then
-		local args = { ... }
-		local methodName = getnamecallmethod()
-		local validInstance, remoteName = pcall(function()
-			return remote.Name
-		end)
-		if
-			validInstance
-			and (methodName == "FireServer" or methodName == "fireServer" or methodName == "InvokeServer" or methodName == "invokeServer")
-			and not (blacklist[remote] or blacklist[remoteName])
-		then
-			local funcInfo = {}
-			local calling
-			if funcEnabled then
-				funcInfo = debug.getinfo(3) or funcInfo
-				calling = useGetCallingScript and getcallingscript() or nil
-			end
-			if recordReturnValues and (methodName == "InvokeServer" or methodName == "invokeServer") then
-				local namecallThread = coroutine.running()
-				local args = { ... }
-				task.defer(function()
-					local returnValue
-					setnamecallmethod(methodName)
-					if remoteHooks[remote] then
-						args = { remoteHooks[remote](unpack(args)) }
-						returnValue = { original(remote, unpack(args)) }
-					else
-						returnValue = { original(remote, unpack(args)) }
-					end
-					coroutine.resume(namecallThread, unpack(returnValue))
-					coroutine.wrap(function()
-						schedule(remoteHandler, false, methodName, remote, args, funcInfo, calling, returnValue)
-					end)()
-				end)
-			else
-				coroutine.wrap(function()
-					schedule(remoteHandler, false, methodName, remote, args, funcInfo, calling)
-				end)()
-			end
-		end
-		if recordReturnValues and (methodName == "InvokeServer" or methodName == "invokeServer") then
-			return coroutine.yield()
-		elseif
-			validInstance
-			and (methodName == "FireServer" or methodName == "fireServer" or methodName == "InvokeServer" or methodName == "invokeServer")
-			and (blocklist[remote] or blocklist[remoteName])
-		then
-			return nil
-		elseif
-			(not recordReturnValues or methodName ~= "InvokeServer" or methodName ~= "invokeServer")
-			and validInstance
-			and (methodName == "FireServer" or methodName == "fireServer" or methodName == "InvokeServer" or methodName == "invokeServer")
-			and remoteHooks[remote]
-		then
-			return original(remote, remoteHooks[remote](...))
-		else
-			return original(remote, ...)
-		end
-	end
-	return original(remote, ...)
-end, original)
+-- local newnamecall = newcclosure(function(remote, ...)
+-- 	if typeof(remote) == "Instance" then
+-- 		local args = { ... }
+-- 		local methodName = getnamecallmethod()
+-- 		local validInstance, remoteName = pcall(function()
+-- 			return remote.Name
+-- 		end)
+-- 		if
+-- 			validInstance
+-- 			and (methodName == "FireServer" or methodName == "fireServer" or methodName == "InvokeServer" or methodName == "invokeServer")
+-- 			and not (blacklist[remote] or blacklist[remoteName])
+-- 		then
+-- 			local funcInfo = {}
+-- 			local calling
+-- 			if funcEnabled then
+-- 				funcInfo = debug.getinfo(3) or funcInfo
+-- 				calling = useGetCallingScript and getcallingscript() or nil
+-- 			end
+-- 			if recordReturnValues and (methodName == "InvokeServer" or methodName == "invokeServer") then
+-- 				local namecallThread = coroutine.running()
+-- 				local args = { ... }
+-- 				task.defer(function()
+-- 					local returnValue
+-- 					setnamecallmethod(methodName)
+-- 					if remoteHooks[remote] then
+-- 						args = { remoteHooks[remote](unpack(args)) }
+-- 						returnValue = { original(remote, unpack(args)) }
+-- 					else
+-- 						returnValue = { original(remote, unpack(args)) }
+-- 					end
+-- 					coroutine.resume(namecallThread, unpack(returnValue))
+-- 					coroutine.wrap(function()
+-- 						schedule(remoteHandler, false, methodName, remote, args, funcInfo, calling, returnValue)
+-- 					end)()
+-- 				end)
+-- 			else
+-- 				coroutine.wrap(function()
+-- 					schedule(remoteHandler, false, methodName, remote, args, funcInfo, calling)
+-- 				end)()
+-- 			end
+-- 		end
+-- 		if recordReturnValues and (methodName == "InvokeServer" or methodName == "invokeServer") then
+-- 			return coroutine.yield()
+-- 		elseif
+-- 			validInstance
+-- 			and (methodName == "FireServer" or methodName == "fireServer" or methodName == "InvokeServer" or methodName == "invokeServer")
+-- 			and (blocklist[remote] or blocklist[remoteName])
+-- 		then
+-- 			return nil
+-- 		elseif
+-- 			(not recordReturnValues or methodName ~= "InvokeServer" or methodName ~= "invokeServer")
+-- 			and validInstance
+-- 			and (methodName == "FireServer" or methodName == "fireServer" or methodName == "InvokeServer" or methodName == "invokeServer")
+-- 			and remoteHooks[remote]
+-- 		then
+-- 			return original(remote, remoteHooks[remote](...))
+-- 		else
+-- 			return original(remote, ...)
+-- 		end
+-- 	end
+-- 	return original(remote, ...)
+-- end, original)
 
-local newFireServer = newcclosure(function(...)
-	return hookRemote("RemoteEvent", ...)
-end, originalEvent)
+-- local newFireServer = newcclosure(function(...)
+-- 	return hookRemote("RemoteEvent", ...)
+-- end, originalEvent)
 
-local newInvokeServer = newcclosure(function(...)
-	return hookRemote("RemoteFunction", ...)
-end, originalFunction)
+-- local newInvokeServer = newcclosure(function(...)
+-- 	return hookRemote("RemoteFunction", ...)
+-- end, originalFunction)
 
 --- Toggles on and off the remote spy
 function toggleSpy()
@@ -2197,15 +2197,17 @@ function toggleSpy()
 				if not entity then print(string.format("missing entity: %s from the network container", remoteName)) continue end 
 
 				entity:SetAttribute("_generationUUID", generationUUID)
-
+				
+				local entityClass = (entity:IsA("RemoteFunction") and "RemoteFunction") or "RemoteEvent"
 				local function generateLog(...)
 					if (entity:GetAttribute("_generationUUID") ~= generationUUID) then return end
 					print(genScript(entity, {...}))
+					hookRemote(entityClass, entity, ...)
 				end
 
-				if entity:IsA("RemoteFunction") then
+				if (entityClass == "RemoteFunction") then
 					(entity::RemoteFunction).OnClientInvoke = generateLog
-				elseif entity:IsA("RemoteEvent") then 
+				elseif (entityClass == "RemoteEvent") then 
 					activeConnections[remoteName] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
 				end
 			end
