@@ -1,1 +1,6 @@
-std = "roblox"
+std = "roblox" # Use the roblox std
+
+[rules]
+multiple_statements = "allow"
+parenthese_conditions = "allow"
+

@@ -296,10 +296,6 @@ TextLabel.TextYAlignment = Enum.TextYAlignment.Top
 
 local networkContainer = game:GetService("ReplicatedStorage").Network::Folder
 local activeConnections = {}
-local hookedRemotes = {
-    "Pets_LocalPetsUpdated"
-}
-
 local generationUUID = game:GetService("HttpService"):GenerateGUID(false)
 
 local function CleanUp()
@@ -2051,7 +2047,7 @@ function hookRemote(remoteType, remote, ...)
 		local validInstance, remoteName = pcall(function()
 			return remote.Name
 		end)
-		print("About the hook teh remote:", validInstance, remoteName)
+
 		if validInstance and not (blacklist[remote] or blacklist[remoteName]) then
 			local funcInfo = {}
 			local calling
@@ -2059,7 +2055,7 @@ function hookRemote(remoteType, remote, ...)
 				funcInfo = debug.getinfo(2) or funcInfo
 				calling = useGetCallingScript and getcallingscript() or nil
 			end
-			print("Aout to retrun the valiues")
+
 			if recordReturnValues and remoteType == "RemoteFunction" then
 				local thread = coroutine.running()
 				local args = { ... }
@@ -2074,7 +2070,7 @@ function hookRemote(remoteType, remote, ...)
 					schedule(
 						remoteHandler,
 						true,
-						remoteType == "RemoteEvent" and "fireserver" or "invokeserver",
+						"invokeserver",
 						remote,
 						args,
 						funcInfo,
@@ -2193,27 +2189,22 @@ end
 function toggleSpy()
 	if not toggle then
 		CleanUp()
-		print("Hook operation starting: LogBuffer:", logBuffer)
 
 		_G._ACTIVE_REMOTE_CONNECTIONS = activeConnections
 		_G._ACTIVE_REMOTE_THREAD = coroutine.create(function()
-			for _, remoteName: string in hookedRemotes do 
-				local entity: Instance? = networkContainer:FindFirstChild(remoteName)
-				if not entity then print(string.format("missing entity: %s from the network container", remoteName)) continue end 
-
+			for _, entity: Instance in networkContainer:GetChildren() do 
 				entity:SetAttribute("_generationUUID", generationUUID)
 				
 				local entityClass = (entity:IsA("RemoteFunction") and "RemoteFunction") or "RemoteEvent"
 				local function generateLog(...)
 					if (entity:GetAttribute("_generationUUID") ~= generationUUID) then return end
-					print(genScript(entity, {...}))
 					hookRemote(entityClass, entity, ...)
 				end
 
 				if (entityClass == "RemoteFunction") then
 					(entity::RemoteFunction).OnClientInvoke = generateLog
 				elseif (entityClass == "RemoteEvent") then 
-					activeConnections[remoteName] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
+					activeConnections[entity.Name] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
 				end
 			end
 		end)
