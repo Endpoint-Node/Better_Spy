@@ -305,6 +305,7 @@ local logBuffer = ""
 
 local function CleanUp()
 	print("Starting cleanup operation.")
+
 	local deprecatedConnections = _G._ACTIVE_REMOTE_CONNECTIONS	
 	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
 
@@ -2053,6 +2054,7 @@ function hookRemote(remoteType, remote, ...)
 		local validInstance, remoteName = pcall(function()
 			return remote.Name
 		end)
+		print("About the hook teh remote:", validInstance, remoteName)
 		if validInstance and not (blacklist[remote] or blacklist[remoteName]) then
 			local funcInfo = {}
 			local calling
@@ -2060,6 +2062,7 @@ function hookRemote(remoteType, remote, ...)
 				funcInfo = debug.getinfo(4) or funcInfo
 				calling = useGetCallingScript and getcallingscript() or nil
 			end
+			print("Aout to retrun the valiues")
 			if recordReturnValues and remoteType == "RemoteFunction" then
 				local thread = coroutine.running()
 				local args = { ... }
