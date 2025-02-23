@@ -1,0 +1,1 @@
+loadstring(game:HttpGet(`https://raw.githubusercontent.com/Endpoint-Node/Better_Spy/master/src/SimpleSpy.lua`))()
