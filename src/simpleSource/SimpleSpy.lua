@@ -2059,13 +2059,7 @@ function hookRemote(remoteType, remote, ...)
 			local funcInfo = {}
 			local calling
 			if funcEnabled then
-				print(debug.getinfo(0))
-				print(debug.getinfo(1))
-				print(debug.getinfo(2))
-				print(debug.getinfo(3))
-				print(debug.getinfo(4))
-
-				funcInfo = debug.getinfo(3) or funcInfo
+				funcInfo = debug.getinfo(2) or funcInfo
 				calling = useGetCallingScript and getcallingscript() or nil
 			end
 			print("Aout to retrun the valiues")
