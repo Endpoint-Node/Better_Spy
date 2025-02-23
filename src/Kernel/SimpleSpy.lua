@@ -2177,7 +2177,7 @@ local internalInterface = {}
 local bridgeTracker = {_trackedRemotes = {}}
 
 _G.INTERNAL_HOOK_INTERFACE = internalInterface
-print("Successfully injected bridge based interface ot _G.", PureSignal)
+print("Successfully injected bridge based interface _G.", PureSignal)
 
 function bridgeTracker._ensureAndGetRemoteFromName(remoteName: string)
 	assert((typeof(remoteName) == "string"), "Invalid remote name, string expected.")
