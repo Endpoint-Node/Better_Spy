@@ -296,6 +296,10 @@ TextLabel.TextYAlignment = Enum.TextYAlignment.Top
 
 local networkContainer = game:GetService("ReplicatedStorage").Network::Folder
 local activeConnections = {}
+local hookedRemotes = {
+    "Pets_LocalPetsUpdated"
+}
+
 local generationUUID = game:GetService("HttpService"):GenerateGUID(false)
 
 local function CleanUp()
@@ -2192,19 +2196,23 @@ function toggleSpy()
 
 		_G._ACTIVE_REMOTE_CONNECTIONS = activeConnections
 		_G._ACTIVE_REMOTE_THREAD = coroutine.create(function()
-			for _, entity: Instance in networkContainer:GetChildren() do 
+			for _, remoteName: string in hookedRemotes do 
+				local entity: Instance? = networkContainer:FindFirstChild(remoteName)
+				if not entity then print(string.format("missing entity: %s from the network container", remoteName)) continue end 
+
 				entity:SetAttribute("_generationUUID", generationUUID)
 				
 				local entityClass = (entity:IsA("RemoteFunction") and "RemoteFunction") or "RemoteEvent"
 				local function generateLog(...)
 					if (entity:GetAttribute("_generationUUID") ~= generationUUID) then return end
+					print(genScript(entity, {...}))
 					hookRemote(entityClass, entity, ...)
 				end
 
 				if (entityClass == "RemoteFunction") then
 					(entity::RemoteFunction).OnClientInvoke = generateLog
 				elseif (entityClass == "RemoteEvent") then 
-					activeConnections[entity.Name] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
+					activeConnections[remoteName] = (entity::RemoteEvent).OnClientEvent:Connect(generateLog)
 				end
 			end
 		end)
