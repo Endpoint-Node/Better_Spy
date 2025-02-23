@@ -2238,8 +2238,10 @@ local function CleanUp()
 	end
 
 	if (typeof(depractedInterface) == "table") then 
-		for _, signal in depractedInterface do 
+		for name: string, signal in depractedInterface do 
+			print("was signal import successful?:", signal.Disconnect, signal.Connect)
 			signal:Disconnect()
+			logBuffer = logBuffer.."\nKilled deprecated connection"..name
 		end
 	end
 
@@ -2248,7 +2250,7 @@ local function CleanUp()
 	end
 
 	_G.REMOTE_LOG_BUFFER = logBuffer
-	print("Cleanup operation succeeded.")
+	print("Cleanup operation succeeded:", logBuffer)
 end
 
 
