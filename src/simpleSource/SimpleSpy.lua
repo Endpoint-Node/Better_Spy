@@ -304,6 +304,7 @@ local generationUUID = game:GetService("HttpService"):GenerateGUID(false)
 local logBuffer = ""
 
 local function CleanUp()
+	print("Starting cleanup operation.")
 	local deprecatedConnections = _G._ACTIVE_REMOTE_CONNECTIONS	
 	local deprecatedThread = _G._ACTIVE_REMOTE_THREAD
 
@@ -319,6 +320,8 @@ local function CleanUp()
 	if (typeof(deprecatedThread) == "thread") then 
 		coroutine.close(deprecatedThread)
 	end
+
+	print("Cleanup operation succeeded.")
 end
 
 -------------------------------------------------------------------------------
